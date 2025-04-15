@@ -16,6 +16,9 @@ abstract class StaticData {
   static String password = 'EagzmjoXYWHSKrrPFVvREPk6QvPovBNwl~plVbYv';
   static String basicAuth = 'Basic ${base64Encode(utf8.encode('$username:$password'))}';
   static String apiURL ='https://Sturliteapp-chipper-bear-vb.cfapps.in30.hana.ondemand.com/api/sap_odata_get/Customising';
+  static String patchapiURL='https://Sturliteapp-chipper-bear-vb.cfapps.in30.hana.ondemand.com/api/sap_odata_patch/Customising';
+  // /YY1_USERCRED_CDS/YY1_USERCRED/12786389742178
+
   static String orignalBatchNo ='816';
   static String channalPartName ='817';
   static String ovfNo ='818';
@@ -536,6 +539,90 @@ Map<String, String> reversedCountryMappings = {
   "ZM": "Zambia",
   "ZW": "Zimbabwe",
 };
+List<String> plantList=[
+'SE14',
+'SE31',
+'SE21',
+'SE09',
+'SE20',
+'SE22',
+'SE08',
+'SE07',
+'SE28',
+'SE05',
+'SE25',
+'SE19',
+'SE10',
+'SE11',
+'SE13',
+'SE16',
+'SE17',
+'SE03',
+'SE04',
+'SE12',
+'SE01',
+'SE23',
+'SE02',
+'SE24',
+'SE26',
+];
+
+// List<String> businessPlan=[
+//   '3700',
+//   '3700',
+//   '2200',
+//   '2400',
+//   '2000',
+//   '2300',
+//   '2700',
+//   '2700',
+//   '2700',
+//   '2700',
+//   '2100',
+//   '800',
+//   '3300',
+//   '3300',
+//   '3300',
+//   '3600',
+//   '1900',
+//   '2900',
+//   '2900',
+//   '100',
+//   '2900',
+//   '900',
+//   '2900',
+//   '1800',
+//   '1000',
+//
+// ];
+List<Map<String, String>> businessPlan = [
+{"code": "3700", "name": "Sturlite -ONE TOWN(VIJAYAWADA)"},
+{"code": "3700", "name": "Sturlite -ONE TOWN(VIJAYAWADA)"},
+{"code": "2200", "name": "Sturlite - RAIPUR"},
+{"code": "2400", "name": "Sturlite - Ahmedabad"},
+{"code": "2000", "name": "Sturlite - Ranchi"},
+{"code": "2300", "name": "Sturlite - BHOPAL"},
+{"code": "2700", "name": "Sturlite -Sturlite - BUDHAWARPETH"},
+{"code": "2700", "name": "Sturlite -Sturlite - BUDHAWARPETH"},
+{"code": "2700", "name": "Sturlite -Sturlite - BUDHAWARPETH"},
+{"code": "2100", "name": "Sturlite -Sturlite - BUDHAWARPETH"},
+{"code": "2100", "name": "Sturlite - CUTTACK"},
+{"code": "800", "name": "Sturlite - JAIPUR"},
+{"code": "3300", "name": "Sturlite - Chennai"},
+{"code": "3300", "name": "Sturlite - Chennai"},
+{"code": "3300", "name": "Sturlite - Chennai"},
+{"code": "3600", "name": "Sturlite - HYDERABAD"},
+{"code": "1900", "name": "Sturlite - KOLKATA"},
+{"code": "2900", "name": "Sturlite  - Mysore Road"},
+{"code": "2900", "name": "Sturlite  - Mysore Road"},
+{"code": "100", "name": "Sturlite-Srinagar"},
+{"code": "2900", "name": "Sturlite  - Mysore Road"},
+{"code": "900", "name": "Sturlite - LUCKNOW"},
+{"code": "2900", "name": "Sturlite  - Mysore Road"},
+{"code": "1800", "name": "Sturlite - GUWAHATI"},
+{"code": "1000", "name": "Sturlite - PATNA"},
+
+];
 
 List<String> endCustomerStateRGItems = [
   'AndraPradesh',
@@ -1722,6 +1809,10 @@ List tableOne = [
     "CostCenter": "",
     "ProfitCenter": "",
     "assignment": "",
+    "BusinessPlace": "",
+    "plant": "",
+    "BusinessPlaceName": "",
+
   },
 ];
 ///Customer Receipt
@@ -1738,7 +1829,11 @@ List customerTable = [
     "CostCenter": "",
     "ProfitCenter": "",
     "assignment": "",
-    "customerName":""
+    "customerName":"",
+    "BusinessPlace": "",
+    "plant": "",
+    "BusinessPlaceName": "",
+
   },
 ];
 
