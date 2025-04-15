@@ -4,11 +4,11 @@ import 'package:adaptive_scrollbar/adaptive_scrollbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sturlite/login_screen.dart';
 import 'package:sturlite/petty_cash_entry/petty_cash_api.dart';
 import 'package:sturlite/utils/static_data.dart';
 import 'package:sturlite/widgets/customButtons.dart';
-import 'package:sturlite/widgets/custom_popup_dropdown/custom_popup_dropdown.dart';
 import 'package:toastification/toastification.dart';
 import 'package:xml/xml.dart' as xml;
 import '../utils/m_colors.dart';
@@ -39,6 +39,7 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
   FocusNode postingDateNode = FocusNode();
   FocusNode invoicingDateNode = FocusNode();
   FocusNode referenceNode = FocusNode();
+  FocusNode plantNode = FocusNode();
 
   final _verticalScrollController = ScrollController();
   final _horizontalScrollController = ScrollController();
@@ -49,17 +50,32 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
   final TextEditingController referenceController = TextEditingController();
   TextEditingController searchCashJournalCodeCont = TextEditingController();
   TextEditingController searchCashJournalNameController = TextEditingController();
+  TextEditingController searchglcodelineCont = TextEditingController();
+  TextEditingController searchglcodelineNameCont = TextEditingController();
   TextEditingController searchGlCodeCont = TextEditingController();
   TextEditingController searchGlNameCont = TextEditingController();
   TextEditingController searchTaxCodeCont = TextEditingController();
   TextEditingController searchTaxNameCont = TextEditingController();
   TextEditingController searchCustomerCodeCont = TextEditingController();
   TextEditingController searchCustomerNameCont = TextEditingController();
+  TextEditingController plantCont = TextEditingController();
+  TextEditingController businessCont = TextEditingController();
+  String businessnmCont = "";
+  // List<String> plantList = ['Plant A', 'Plant B', 'Plant C']; // your list
+  String? selectedPlant;
+  String cashgl="";
+  String hpygls="";
+  String PlantData="";
+  String BusinessData="";
+
 
   List houseBankList = [];
   List<String> accountIdBankList = [];
   List glAccList = [];
   List glNameList = [];
+  List glAcccdelineList = [];
+  List glNamelineList = [];
+
   List taxCodeNamesList = [];
   List costCenterList = [];
   List costCenterNameList = [];
@@ -68,34 +84,132 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
 
   ///For Show Dialog.
   List displayCashJournalList = [];
+  List displaygllineList=[];
   List displayGLList = [];
   List displayTaxCodesList = [];
   List displayCostCenterList=[];
   List displayCustomerList = [];
   List initialJournalList=[];
+  List initilaLineglList=[];
+  String currentUser="";
+  List<String> headglList=[];
+  List<String> headhappyglList=[];
+  List<String> combinedGLList=[];
+  List<String> linegllist=[];
+
   ///Cash Journal Values Based On Transaction Type.
   cashJournalValues(){
     setState(() {
       if(typeDropdownValue == "Cash Receipt"){
         displayCashJournalList = initialJournalList;
-        // print('--------cashReceiptValues-------');
-        // print(cashReceiptValues);
+
       }
       if(typeDropdownValue == "Cash Payment"){
         displayCashJournalList = initialJournalList;
             // cashPaymentValues;
       }
     });
-  }
 
+
+
+  }
+ getInitialData()async{
+    SharedPreferences pref = await SharedPreferences.getInstance();
+      plantCont.text = pref.getString("plant")!;
+      businessCont.text=pref.getString("BusinessPl")!;
+     businessnmCont=pref.getString("BusinessPlNM")!;
+      cashgl=pref.getString("cashgls")!;
+      hpygls=pref.getString("happygl")!;
+
+    // if (cashgl.isEmpty) {
+    //   return;
+    // }
+    // if (hpygls.isEmpty) {
+    //   return;
+    // }
+   combinedGLList = (cashgl + '/' + hpygls)
+        .split('/')
+        .map((gl) => gl.trim())
+        .where((gl) => gl.isNotEmpty)
+        .toList();
+    // Handle one or multiple GLs
+
+    headglList = cashgl
+        .split('/')
+        .map((gl) => gl.trim())
+        .where((gl) => gl.isNotEmpty)
+        .toList();
+
+
+    headhappyglList = hpygls
+        .split('/')
+        .map((gl) => gl.trim())
+        .where((gl) => gl.isNotEmpty)
+        .toList();
+
+ }
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
     makeEmpty();
+    getInitialData();
     _fetchApiResponse();
-    // displayCashJournalList = cashJournalList2;
+    _fetnewgldata();
+    displayCashJournalList = cashJournalList2;
     displayTaxCodesList = taxCodesDELine;
+  }
+  Future<void> _fetnewgldata() async{
+    setState(() {
+      isLoading = true;
+    });
+    try{
+      var glAcc=await getGlAccount1(typeDropdownValue,combinedGLList);
+
+      if(glAcc != null){
+        setState(() {
+          initialJournalList = glAcc.map((item) => {
+            "Code": item["Journal_Accounts"].toString(),
+            "Name": item['CashJournalDesc'].toString(),
+
+            // "CostCenter": item["CostCenter"].toString(),
+            // "CostCenterName": item["CostCenterName"].toString()
+          }).toSet().toList();
+
+          displayCashJournalList = initialJournalList;
+        });
+      } else{
+        log('No data found for GL Account.');
+      }
+      var hpygl=await gethappygh(typeDropdownValue,headglList);
+
+      if(hpygl != null){
+        setState(() {
+          initialJournalList = glAcc.map((item) => {
+            "Code": item["Journal_Accounts"].toString(),
+            "Name": item['CashJournalDesc'].toString(),
+
+            // "CostCenter": item["CostCenter"].toString(),
+            // "CostCenterName": item["CostCenterName"].toString()
+          }).toSet().toList();
+
+          displayCashJournalList = initialJournalList;
+        });
+      } else{
+        log('No data found for GL Account.');
+      }
+
+
+    }
+    catch(e){
+      log("Error in fetching dropdown values: $e");
+    } finally{
+      log('Fetching data completed.');
+      setState(() {
+        isLoading = false;
+      });
+    }
+
   }
   @override
   void dispose() {
@@ -113,37 +227,21 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
       isLoading = true;
     });
     try{
-      var cashJournalHeader = await getCashJournal(typeDropdownValue);
+      // var cashJournalHeader = await getCashJournal(typeDropdownValue);
       // var glAcc  = await getGlAccount();
       var glAcc=await getGlAccount(typeDropdownValue);
+      var glAccline=await getGlAccount2(typeDropdownValue,headglList);
       var houseBank = await getHouseBank();
       // var costCenter = await getCostCenter();
       var costCenter=await getGlAccount(typeDropdownValue);
       var profitCenter = await getProfitCenter();
       var customer = await getCustomerGLAccount();
 
-      if(cashJournalHeader != null){
-        setState(() {
 
-          initialJournalList = cashJournalHeader.map((item) => {
-            "Code": item["Journal_Accounts"],
-            "Name": item['CashJournalDesc'],
-            // "Type": item['TypeOfTransaction_Text'],
-          }).toSet().toList();
-
-          displayCashJournalList = initialJournalList;
-        });
-      } else{
-        log('No data found for GL Account.');
-      }
 
       if(houseBank != null){
         setState(() {
-          // houseBankList = houseBank.map<String>((item) {
-          //   print(item);
-          //   return item["HouseBank"].toString();
-          // })
-          //     .toSet().toList();
+
           houseBankList = houseBank;
         });
       } else{
@@ -174,14 +272,22 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
       } else{
         log('No data found for GL Account.');
       }
+      if(glAccline != null){
+        setState(() {
+          initilaLineglList = glAccline.map((item) => {
+            "Code": item["Journal_Accounts"].toString(),
+            "Name": item['CashJournalDesc'].toString(),
+
+          }).toSet().toList();
+
+          displaygllineList = initilaLineglList;
+        });
+      } else{
+        log('No data found for GL Account.');
+      }
 
       if(costCenter != null){
         setState(() {
-          // print('--------costCenter-----');
-          // print(costCenter);
-
-          //OLD
-          //costCenterList = costCenter.map<String>((item) => item["CostCenter"].toString() ).toSet().toList();
 
           costCenterList = costCenter.map((item) =>
           {
@@ -392,30 +498,8 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),),
-        actions: [
-          PopupMenuButton(
-            // add icon, by default "3 dot" icon
-              icon: const Icon(Icons.account_circle),
-              itemBuilder: (context){
-                return [
-                  const PopupMenuItem<int>(
-                      value: 0,
-                      child: Center(child: Text("Logout"))
-                  ),
-                  // const PopupMenuItem<int>(
-                  //     value: 1,
-                  //     child: Center(child: Text("Add Users"))
-                  // ),
-                ];
-              },
-              onSelected:(value) async {
-                if(value == 0){
-                  confirmLogout();
-                }
+        actions: const [
 
-              }
-          ),
-          const SizedBox(width: 10,),
 
         ],
       ),
@@ -475,6 +559,70 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                           icon: Icons.clear,
                         );
                       }
+
+
+                      else if (openingBalance.isEmpty || closingBalance.isEmpty){
+                        showToast(
+                              context: context,
+                              title: 'Opening Balance',
+                              description: 'Balances cannot be empty.',
+                              type: ToastificationType.error,
+                              icon: Icons.clear,
+                             );
+                      }
+
+                      // double? openingBal = double.tryParse(openingBalance);
+                      // double? closingBal = double.tryParse(closingBalance);
+
+                      double? openingBal = double.tryParse(openingBalance.replaceAll(',', ''));
+                      double? closingBal = double.tryParse(closingBalance.replaceAll(',', ''));
+
+                      for (int i = 0; i < tableOne.length; i++) {
+                        var row = tableOne[i];
+
+                        double? enteredAmount = double.tryParse(row["amount"].toString());
+
+                        if (enteredAmount != null && closingBal != null) {
+                          if (enteredAmount > closingBal) {
+                            showToast(
+                              context: context,
+                              title: 'Amount',
+                              description: 'Amount is not greater than closing balance',
+                              type: ToastificationType.error,
+                              icon: Icons.warning,
+                            );
+                            return;
+                          }
+                        }
+                      }
+
+
+                      if (openingBal == null || closingBal == null) {
+                        showToast(
+                          context: context,
+                          title: 'Invalid Input',
+                          description: 'Please take valid balances ',
+                          type: ToastificationType.error,
+                          icon: Icons.clear,
+                        );
+                        return;
+
+                      }
+
+                      if (openingBal < 0 || closingBal < 0){
+                        // if ((openingBal ?? 0) < 0 || (closingBal ?? 0) < 0){
+                        showToast(
+                          context: context,
+                          title: 'Negative Balance',
+                          description: 'Negative values are not considered.',
+                          type: ToastificationType.error,
+                          icon: Icons.warning,
+                        );
+                        return; // Stop execution
+                      }
+
+
+
                       // else if (invoicingDateController.text.isEmpty) {
                       //   showToast(
                       //     context: context,
@@ -505,8 +653,7 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                           "table": (typeDropdownValue =="Customer Receipt")? customerTable : tableOne,
 
                         };
-                        print('--------Table-------');
-                        print(inputData);
+
                         // print(inputData['table']);
                         ///Error For Customer Receipt.
                         if(typeDropdownValue == "Customer Receipt" ){
@@ -532,7 +679,10 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                                 error = false;
                               }
                             }
-                          }
+                            for (var i = 0; i < inputData['table'].length; i++) {
+                            }
+
+                           }
 
                           if(typeDropdownValue == "Cash Payment"){
                             for(int i=0;i<inputData['table'].length;i++){
@@ -551,6 +701,9 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                             error= true;
                           }
                         }
+                        for (var i = 0; i < inputData['table'].length; i++) {
+                        }
+
 
                         if(error){
                           if(mounted) {
@@ -571,8 +724,7 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                                 ],
                               ),
                               alignment: Alignment.topCenter,
-                              // direction: TextDirection.LTR,
-                              //    animationDuration: const Duration(milliseconds: 300),
+
 
                               icon: const Icon(Icons.clear,color: Colors.red),
                               // show or hide the icon
@@ -604,28 +756,6 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
 
                           if(typeDropdownValue =="Cash Payment"){
                             ///Through error Total amount is grater than Closing balance.
-                            // if(tempTotal>closingTotal){
-                            //   if(mounted) {
-                            //     showDialog(
-                            //       context: context,
-                            //       builder: (BuildContext context) {
-                            //         return AlertDialog(
-                            //           title: const Text('Total Amount is greater than closing balance'),
-                            //           actions: <Widget>[
-                            //             TextButton(
-                            //               onPressed: () {
-                            //                 // Close the AlertDialog
-                            //                 Navigator.of(context).pop();
-                            //               },
-                            //               child: const Text('OK'),
-                            //             ),
-                            //           ],
-                            //         );
-                            //       },
-                            //     );
-                            //   }
-                            // }
-                           // else{
                               final builder = xml.XmlBuilder();
                               builder.element('soapenv:Envelope', namespaces: {
                                 'http://schemas.xmlsoap.org/soap/envelope/':'soapenv',
@@ -675,6 +805,8 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                                         // Items
                                         for (var i = 0; i < inputData['table'].length; i++) {
                                           final item = inputData['table'][i];
+
+
                                           builder.element('Item', nest: () {
                                             builder.element(
                                                 'ReferenceDocumentItem', nest: (i + 1).toString());
@@ -689,7 +821,9 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
 
                                             ///Newly added.
                                             builder.element('DocumentItemText', nest: '${item['text']}');
+
                                             builder.element('AssignmentReference', nest: '${item['assignment']}');
+
 
                                             // Add Tax
                                             if(item['taxCode']!=null && item['taxCode']!=""  ) {
@@ -700,17 +834,18 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                                               });
                                             }
 
-                                            // Add AccountAssignment
                                             builder.element('AccountAssignment', nest: () {
                                               builder.element('CostCenter', nest: item['CostCenter'] ?? '');
                                               builder.element('ProfitCenter', nest: item['ProfitCenter'] ?? '');
                                             });
 
+                                            builder.element('BusinessPlace', nest: item['BusinessPlace'] ?? '');
+                                            builder.element('Plant', nest: item['plant'] ?? '');
+
                                             if (item['houseBank'] != null  ) {
                                               builder.element('HouseBank', nest: item['accountId']);
                                               builder.element('HouseBankAccount', nest: item['accountId']);
                                             }
-
 
                                           });
                                         }
@@ -721,6 +856,9 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                                           if(item['taxCode']!=null &&  item['taxCode']!="") {
                                             builder.element('ProductTaxItem', nest: () {
                                               builder.element('TaxCode', nest: item['taxCode']);
+                                              builder.element('BusinessPlace', nest: item['BusinessPlace']);
+                                              builder.element('Plant', nest: item['plant']);
+
                                               builder.element('TaxItemGroup', nest: '001');
                                               builder.element('TaxItemClassification', nest: '');
                                               builder.element('DebitCreditCode', nest: 'S');
@@ -742,12 +880,15 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                               bool returnValue = await postData(xmlString,context,mounted);
                               if(returnValue){
                                 tableOne =[];
+                                // businessPlan=[];
+                                // plantList=[];
                                 companyDropdownValue ="";
                                 cashDropdownValue ="";
                                 isShowBalance = false;
                                 typeDropdownValue ="";
                                 postingDateController.clear();
                                 invoicingDateController.clear();
+                                referenceController.clear();
                                 openingTotal =0;
                                 closingTotal =0;
                                 openingBalance = "";
@@ -756,6 +897,8 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                                 openingCurrency = "";
                                 closingBalance = "";
                                 closingCurrency = "";
+                                // plantCont.text="";
+                                // businessCont.text="";
                                 makeEmpty();
                                 // tableOne = [
                                 //   {
@@ -837,6 +980,9 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                                           ///Newly Added.
                                           builder.element('DocumentItemText', nest: '${customer['text']}');
                                           builder.element('AssignmentReference', nest: '${customer['assignment']}');
+                                          builder.element('BusinessPlace', nest: '${customer['BusinessPlace']}');
+                                          builder.element('Plant', nest: '${customer['plant']}');
+
                                         });
                                       }
                                     });
@@ -847,8 +993,6 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
 
                             // Convert XML builder to a string
                             final xmlString = builder.buildDocument().toXmlString(pretty: true);
-                            print('-----Customer Receipt------');
-                            print(xmlString);
                             bool returnValue = await postDataCustomerReceipt(xmlString,context,mounted);
                             if(returnValue){
                               customerTable =[];
@@ -858,6 +1002,7 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                               typeDropdownValue ="";
                               postingDateController.clear();
                               invoicingDateController.clear();
+                              referenceController.clear();
                               openingTotal =0;
                               closingTotal =0;
                               openingBalance = "";
@@ -866,6 +1011,8 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                               openingCurrency = "";
                               closingBalance = "";
                               closingCurrency = "";
+                              // plantCont.text="";
+                              // businessCont.text="";
 
                               makeEmpty();
 
@@ -976,7 +1123,10 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                                           builder.element('AccountAssignment', nest: () {
                                             builder.element('CostCenter', nest: item['CostCenter'] ?? '');
                                             builder.element('ProfitCenter', nest: item['ProfitCenter'] ?? '');
+
                                           });
+                                          builder.element('BusinessPlace', nest: item['BusinessPlace'] ?? '');
+                                          builder.element('Plant', nest: item['plant'] ?? '');
 
                                           if (item['houseBank'] != null) {
                                             builder.element('HouseBank', nest: item['accountId']);
@@ -993,6 +1143,7 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                                         if(item['taxCode']!=null &&  item['taxCode']!="") {
                                           builder.element('ProductTaxItem', nest: () {
                                             builder.element('TaxCode', nest: item['taxCode']);
+                                            builder.element('BusinessPlace', nest: item['BusinessPlace']);
                                             builder.element('TaxItemGroup', nest: '001');
                                             builder.element('TaxItemClassification', nest: '');
                                             builder.element('DebitCreditCode', nest: 'S');
@@ -1010,15 +1161,17 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
 
                             // Convert XML builder to a string
                             final xmlString = builder.buildDocument().toXmlString(pretty: true);
-                            // print(xmlString);
                             bool returnValue = await postData(xmlString,context,mounted);
                             if(returnValue){
                               tableOne =[];
+                              // businessPlan=[];
+                              // plantList=[];
                               companyDropdownValue ="";
                               cashDropdownValue ="";
                               typeDropdownValue ="";
                               postingDateController.clear();
                               invoicingDateController.clear();
+                              referenceController.clear();
                               openingTotal =0;
                               closingTotal =0;
                               openingBalance = "";
@@ -1258,12 +1411,15 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                                                         "Cash Payment") {
                                                   isShowTable2 = true;
                                                   isShowTable1 = false;
+
                                                 } else {
                                                   isShowTable1 = false;
                                                   isShowTable2 = false;
                                                 }
                                                 makeEmpty();
                                                 _fetchApiResponse();
+                                                _fetnewgldata();
+
 
                                               });
                                             },
@@ -1490,10 +1646,6 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                                         child: Row(
                                           children: [
                                             Text("Reference"),
-                                            // Padding(
-                                            //   padding: EdgeInsets.only(top: 4.0,left: 4),
-                                            //   child: Text("*",style: TextStyle(color: Colors.red),),
-                                            // )
                                           ],
                                         )
                                     ),
@@ -1512,6 +1664,7 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                                   ],
                                 ),
                               ),
+
                             ],
                           ),
                         ),
@@ -1626,7 +1779,7 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                 ///For Header.
                 if(typeDropdownValue ==  "Cash Receipt")...[
                   Container(
-                    width: 900,
+                    width: 1300,
                     color: Colors.grey[200],
                     child:   const Row(
                       children: [
@@ -1688,62 +1841,36 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                                 textAlign: TextAlign.center,),
                             )
                         ),
+                        SizedBox(
+                            width: 150,
+                            child: Padding(
+                              padding: EdgeInsets.all(8.0),
+                              child: Row(mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text("Business Place", style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold),
+                                    textAlign: TextAlign.center,),
 
-                        // const SizedBox(
-                        //     width: 200,
-                        //     child: Padding(
-                        //       padding: EdgeInsets.all(8.0),
-                        //       child: Row(mainAxisAlignment: MainAxisAlignment.center,
-                        //         children: [
-                        //           Text("Tax Code", style: TextStyle(
-                        //               fontSize: 12,
-                        //               fontWeight: FontWeight.bold),
-                        //             textAlign: TextAlign.center,),
-                        //
-                        //         ],
-                        //       ),
-                        //     )
-                        // ),
-                        // SizedBox(
-                        //     width: 150,
-                        //     child: Padding(
-                        //       padding: const EdgeInsets.all(8.0),
-                        //       child: Row(mainAxisAlignment: MainAxisAlignment.center,
-                        //         children: [
-                        //           const Text("Cost Center", style: TextStyle(
-                        //               fontSize: 12,
-                        //               fontWeight: FontWeight.bold),
-                        //             textAlign: TextAlign.center,),
-                        //
-                        //           Padding(
-                        //             padding:const EdgeInsets.only(top: 4.0,left: 4),
-                        //             child:
-                        //             Text(typeDropdownValue=="Cash Receipt"? "" : typeDropdownValue=="Cash Payment"? "*":"",style:const TextStyle(color: Colors.red),),
-                        //           )
-                        //         ],
-                        //       ),
-                        //     )
-                        // ),
-                        // SizedBox(
-                        //     width: 150,
-                        //     child: Padding(
-                        //       padding: EdgeInsets.all(8.0),
-                        //       child: Text("Profit Center",
-                        //         style: TextStyle(fontSize: 12,
-                        //             fontWeight: FontWeight.bold),
-                        //         textAlign: TextAlign.center,),
-                        //     )
-                        // ),
-                        // SizedBox(
-                        //     width: 250,
-                        //     child: Padding(
-                        //       padding: EdgeInsets.all(8.0),
-                        //       child: Text("Assignment", style: TextStyle(
-                        //           fontSize: 12,
-                        //           fontWeight: FontWeight.bold),
-                        //         textAlign: TextAlign.center,),
-                        //     )
-                        // ),
+                                ],
+                              ),
+                            )
+                        ),
+                        SizedBox(
+                            width: 150,
+                            child: Padding(
+                              padding: EdgeInsets.all(8.0),
+                              child: Row(mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text("Plant", style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold),
+                                    textAlign: TextAlign.center,),
+
+                                ],
+                              ),
+                            )
+                        ),
                       ],
                     ),
                   ),
@@ -1895,7 +2022,7 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                 ],
                 if(typeDropdownValue !=  "Cash Receipt" && typeDropdownValue !=  "Customer Receipt")...[
                   Container(
-                    width: 1100,
+                    width: 1400,
                     color: Colors.grey[200],
                     child:  Row(children: [
                       const SizedBox(
@@ -1946,36 +2073,6 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                             ),
                           )
                       ),
-                      ///Commented (House Bank, Account ID)
-                      // SizedBox(
-                      //     width: 250,
-                      //     child: Padding(
-                      //       padding: EdgeInsets.all(8.0),
-                      //       child: Row(mainAxisAlignment: MainAxisAlignment.center,
-                      //         children: [
-                      //           Text("House Bank", style: TextStyle(
-                      //               fontSize: 12,
-                      //               fontWeight: FontWeight.bold),
-                      //             textAlign: TextAlign.center,),
-                      //           // if(typeDropdownValue !=  "Cash Receipt")
-                      //           //   const Padding(
-                      //           //     padding: EdgeInsets.only(top: 4.0,left: 4),
-                      //           //     child: Text("*",style: TextStyle(color: Colors.red),),
-                      //           //   )
-                      //         ],
-                      //       ),
-                      //     )
-                      // ),
-                      // SizedBox(
-                      //     width: 150,
-                      //     child: Padding(
-                      //       padding: EdgeInsets.all(8.0),
-                      //       child: Text("Account ID", style: TextStyle(
-                      //           fontSize: 12,
-                      //           fontWeight: FontWeight.bold),
-                      //         textAlign: TextAlign.center,),
-                      //     )
-                      // ),
                       const SizedBox(
                           width: 250,
                           child: Padding(
@@ -1986,32 +2083,6 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                               textAlign: TextAlign.center,),
                           )
                       ),
-                      ///Reference.
-                      // SizedBox(
-                      //     width: 250,
-                      //     child: Padding(
-                      //       padding: EdgeInsets.all(8.0),
-                      //       child: Text("Reference", style: TextStyle(
-                      //           fontSize: 12,
-                      //           fontWeight: FontWeight.bold),
-                      //         textAlign: TextAlign.center,),
-                      //     )
-                      // ),
-                      // const SizedBox(
-                      //     width: 200,
-                      //     child: Padding(
-                      //       padding: EdgeInsets.all(8.0),
-                      //       child: Row(mainAxisAlignment: MainAxisAlignment.center,
-                      //         children: [
-                      //           Text("Tax Code", style: TextStyle(
-                      //               fontSize: 12,
-                      //               fontWeight: FontWeight.bold),
-                      //             textAlign: TextAlign.center,),
-                      //
-                      //         ],
-                      //       ),
-                      //     )
-                      // ),
                       const SizedBox(
                           width: 150,
                           child: Padding(
@@ -2030,26 +2101,31 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                             ),
                           )
                       ),
-                      // const SizedBox(
-                      //     width: 150,
-                      //     child: Padding(
-                      //       padding: EdgeInsets.all(8.0),
-                      //       child: Text("Profit Center",
-                      //         style: TextStyle(fontSize: 12,
-                      //             fontWeight: FontWeight.bold),
-                      //         textAlign: TextAlign.center,),
-                      //     )
-                      // ),
-                      // const SizedBox(
-                      //     width: 250,
-                      //     child: Padding(
-                      //       padding: EdgeInsets.all(8.0),
-                      //       child: Text("Assignment", style: TextStyle(
-                      //           fontSize: 12,
-                      //           fontWeight: FontWeight.bold),
-                      //         textAlign: TextAlign.center,),
-                      //     )
-                      // ),
+                      const SizedBox(
+                          width: 200,
+                          child: Padding(
+                            padding: EdgeInsets.all(8.0),
+                            child: Text("Business Place",
+                              style: TextStyle(fontSize: 12,
+                                  fontWeight: FontWeight.bold),
+                              textAlign: TextAlign.center,),
+                          )
+                      ),
+                      const SizedBox(
+                          width: 150,
+                          child: Padding(
+                            padding: EdgeInsets.all(8.0),
+                            child: Row(mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text("Plant", style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold),
+                                  textAlign: TextAlign.center,),
+
+                              ],
+                            ),
+                          )
+                      ),
                     ]),
                   ),
                 ],
@@ -2057,7 +2133,7 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                 ///Table.
                 if(typeDropdownValue ==  "Cash Receipt")...[
                   SizedBox(
-                    width: 900,
+                    width: 1300,
                     child: ListView.builder(
                       shrinkWrap: true,
                       itemCount: tableOne.length,
@@ -2073,6 +2149,10 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                         TextEditingController referenceController = TextEditingController();
                         TextEditingController assignmentController = TextEditingController();
                         TextEditingController hsnController = TextEditingController();
+                        TextEditingController businessPlaceController = TextEditingController();
+                        TextEditingController plantController = TextEditingController();
+                        businessPlaceController.text=businessCont.text;
+                        plantController.text=plantCont.text;
                         try{
                           hsnController.text=tableOne[index]["GLAccount"];
 
@@ -2093,6 +2173,12 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                             (tableOne[index]["assignment"] ?? "")
                                 .toString();
 
+                        businessPlaceController.text = (tableOne[index]["BusinessPlace"] ?? "").toString();
+                        tableOne[index]["BusinessPlace"] =businessCont.text;
+                        plantController.text = (tableOne[index]["plant"] ?? "").toString();
+
+                        tableOne[index]["plant"] =plantCont.text;
+
                         amountController.selection =
                             TextSelection.fromPosition(TextPosition(
                                 offset: amountController.text.length));
@@ -2106,6 +2192,17 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                             TextSelection.fromPosition(TextPosition(
                                 offset: assignmentController.text
                                     .length));
+                        businessPlaceController.selection =
+                            TextSelection.fromPosition(TextPosition(
+                                offset: businessPlaceController.text
+                                    .length));
+                        plantController.selection =
+                            TextSelection.fromPosition(TextPosition(
+                                offset: plantController.text
+                                    .length));
+
+
+
                         return Container(
                           color: Colors.grey[50],
                           child: Padding(
@@ -2190,43 +2287,6 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                                 // ),
                                 Column(crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // SizedBox(
-                                    //   width: 200,
-                                    //   child: Padding(
-                                    //     padding: const EdgeInsets.all(8.0),
-                                    //     child: LayoutBuilder(
-                                    //       builder: (BuildContext context, BoxConstraints constraints) {
-                                    //         return CustomPopupMenuButton(
-                                    //           textController: TextEditingController(
-                                    //               text: tableOne[index]["GLAccount"] ?? ""),
-                                    //           elevation: 4,
-                                    //           decoration:
-                                    //           Utils.customPopupDecoration(hintText: "Select GL"),
-                                    //           itemBuilder: (BuildContext context) {
-                                    //             return glAccList.map((value) {
-                                    //               value as Map;
-                                    //               return CustomPopupMenuItem(
-                                    //                 value: value, // Pass the whole map as the value
-                                    //                 text: value['GLAccount']!,
-                                    //                 child: Container(),
-                                    //               );
-                                    //             }).toList();
-                                    //           },
-                                    //           onSelected: (value) {
-                                    //             setState(() {
-                                    //               tableOne[index]["GLAccount"] = value['GLAccount'].toString();
-                                    //               glNameList[index].text = value['GLAccountName'].toString();
-                                    //             });
-                                    //           },
-                                    //           onCanceled: () {},
-                                    //           hintText: "",
-                                    //           childWidth: constraints.maxWidth,
-                                    //           child: Container(),
-                                    //         );
-                                    //       },
-                                    //     ),
-                                    //   ),
-                                    // ),
                                     ///BTSD.
                                     SizedBox(
                                       width: 200,
@@ -2241,14 +2301,14 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                                           onTap: () {
                                             showDialog(
                                               context: context,
-                                              builder: (context) => _showDialogGL(),
+                                              builder: (context) => _showDialogGL2(),
                                             ).then((value) async {
                                               // print('-------Test--------');
                                               // print(value);
                                               if (value != null && value is Map) {
                                                 setState(() {
-                                                  tableOne[index]["GLAccount"] = value['GLAccount'].toString();
-                                                  glNameList[index].text = value['GLAccountName'].toString();
+                                                  tableOne[index]["GLAccount"] = value['Code'].toString();
+                                                  glNameList[index].text = value['Name'].toString();
                                                 });
                                               }
                                             });
@@ -2277,10 +2337,139 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                                             hintText: 'Enter Text',
                                             controller: textController),
                                         onChanged: (value) {
-                                          tableOne[index]["narration"] = value;
+                                          tableOne[index]["text"] = value;
                                         },
                                       ),
                                     )
+                                ),
+
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const SizedBox(height: 8),
+                                    InkWell(
+                                      onTap: () async {
+                                        Map<String, String>? selected = await showDialog(
+                                          context: context,
+                                          builder: (context) => AlertDialog(
+                                            title: const Text('Select Business'),
+                                            content: SizedBox(
+                                              width: 150,
+                                              height: 300,
+                                              child: ListView.builder(
+                                                itemCount: businessPlan.length,
+                                                itemBuilder: (context, index) {
+                                                  final business = businessPlan[index];
+                                                  return ListTile(
+                                                    title: Text('${business["code"]} - ${business["name"]}'),
+                                                    onTap: () {
+                                                      Navigator.pop(context, business);
+                                                    },
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(15),
+                                            ),
+                                          ),
+                                        );
+
+                                        if (selected != null) {
+                                          setState(() {
+                                            businessCont.text = selected["code"] ?? "";
+                                            businessnmCont = selected["name"] ?? "";
+                                            tableOne[index]["BusinessPlace"] = businessCont.text;
+                                            tableOne[index]["BusinessPlaceName"] = businessnmCont;
+                                          });
+                                        }
+                                      },
+                                      child: Container(
+                                        height: 30,
+                                        width: 150,
+                                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                                        alignment: Alignment.centerLeft,
+                                        decoration: BoxDecoration(
+                                          border: Border.all(color: Colors.grey, width: 1),
+                                          borderRadius: BorderRadius.circular(5),
+                                        ),
+                                        child: Text(
+                                          businessCont.text.isEmpty ? "Select Business" : businessCont.text,
+                                          style: const TextStyle(fontSize: 12, color: Colors.black),
+                                        ),
+                                      ),
+                                    ),
+
+                                    // 👇 Display Business Place Name below
+                                    if (businessnmCont.isNotEmpty) ...[
+                                      const SizedBox(height: 5),
+                                      Text(
+                                        businessnmCont,
+                                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                                const SizedBox(width: 10,),
+                                Column(
+                                  children: [
+                                    const SizedBox(height: 8),
+                                    InkWell(
+                                      onTap: () async {
+                                        String? selected = await showDialog(
+                                          context: context,
+                                          builder: (context) => AlertDialog(
+                                            title: const Text('Select Plant'),
+
+                                            content: SizedBox(
+                                              width: 150,
+                                              height: 300,
+                                              child: ListView.builder(
+                                                itemCount: plantList.length,
+                                                itemBuilder: (context, index) {
+                                                  return ListTile(
+                                                    title: Text(plantList[index]),
+                                                    onTap: () {
+                                                      Navigator.pop(context, plantList[index]);
+                                                      // tableOne[index]["plant"] = plantList[index];
+                                                    },
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(15),
+                                            ),
+                                          ),
+                                        );
+
+                                        if (selected != null) {
+                                          setState(() {
+                                            plantCont.text = selected;
+                                            // businessCont.text = selected;
+                                            // tableOne[index]["plant"] = plantCont.text;
+                                          });
+                                        }
+                                      },
+                                      child: Container(
+                                        height: 30,
+                                        width: 150,
+                                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                                        alignment: Alignment.centerLeft,
+                                        decoration: BoxDecoration(
+                                          border: Border.all(
+                                            color: Colors.grey,
+                                            width: 1,
+                                          ),
+                                          borderRadius: BorderRadius.circular(5),
+                                        ),
+                                        child: Text(
+                                          plantCont.text.isEmpty ? "Select Plant" : plantCont.text,
+                                          style: const TextStyle(fontSize: 12, color: Colors.black),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                                 ///Reference.
 
@@ -2288,55 +2477,6 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // SizedBox(
-                                    //   width: 200,
-                                    //   child: Padding(
-                                    //     padding: const EdgeInsets.all(8.0),
-                                    //     child: TextField(
-                                    //       controller: TextEditingController(text: tableOne[index]["taxCode"] ?? ""),
-                                    //       decoration: Utils.customerFieldDecoration(
-                                    //         hintText: 'Search TaxName',
-                                    //         controller: TextEditingController(text: tableOne[index]["taxCode"] ?? ""),
-                                    //       ),
-                                    //       onTap: () {
-                                    //         showDialog(
-                                    //           context: context,
-                                    //           builder: (context) => _showDialogTaxCodes(),
-                                    //         ).then((value) async {
-                                    //
-                                    //           if (value != null && value is Map) {
-                                    //             print('----Onselected Hare Krishna----');
-                                    //             print(value['TAXCODE']);
-                                    //             if(value['TAXCODE']== "--Select--"){
-                                    //               tableOne[index]["taxCode"] = '--Select--';
-                                    //               taxCodeNamesList[index].text = "${value['TAXCODE']}-${value['TAXCODENAME']}";
-                                    //             }
-                                    //             else {
-                                    //               String selectedValue = value['TAXPER'].toString(); // Get the value from the key
-                                    //
-                                    //               // print('---------Line Level Items---------');
-                                    //               // print("Selected Key: ${value['TAXCODE']}, Value: $selectedValue");
-                                    //
-                                    //               tableOne[index]["taxCode"] = value['TAXCODE']; // Update with the selected key
-                                    //               tableOne[index]["taxValue"] = selectedValue;
-                                    //               if (tableOne[index]["amount"] != "" && tableOne[index]["amount"] != null) {
-                                    //                 String taxAmount = (double.parse(tableOne[index]["taxValue"].toString()) * double.parse(tableOne[index]["amount"].toString()) / 100).toStringAsFixed(2);
-                                    //                 String totalAmount = (double.parse(taxAmount.toString()) + double.parse(tableOne[index]["amount"].toString())).toStringAsFixed(2);
-                                    //                 tableOne[index]["taxAmount"] = taxAmount;
-                                    //                 tableOne[index]["totalAmount"] = totalAmount;
-                                    //               }
-                                    //               taxCodeNamesList[index].text = "${value['TAXCODE']}-${value['TAXCODENAME']}";
-                                    //             }
-                                    //
-                                    //             setState(() {
-                                    //
-                                    //             });
-                                    //           }
-                                    //         });
-                                    //       },
-                                    //     ),
-                                    //   ),
-                                    // ),
                                     if (taxCodeNamesList[index].text != "" && taxCodeNamesList.isNotEmpty && taxCodeNamesList[index].text != "--Select---") // Check if GLAccountName exists
                                       SizedBox(
                                         width: 185,
@@ -2354,46 +2494,6 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                                 ///Cost Center
                                 Column(
                                   children: [
-                                    // SizedBox(
-                                    //     width: 150,
-                                    //     child: Padding(
-                                    //       padding: const EdgeInsets.all(8.0),
-                                    //       child: LayoutBuilder(
-                                    //         builder: (BuildContext context,
-                                    //             BoxConstraints constraints) {
-                                    //           // Sort the costCenterList in ascending order
-                                    //           // final sortedCostCenterList = List<String>.from(costCenterList)..sort();
-                                    //           return CustomPopupMenuButton(
-                                    //             elevation: 4,
-                                    //             decoration: Utils.customPopupDecoration(
-                                    //               hintText: tableOne[index]["CostCenter"] == "" ? "Select" : tableOne[index]["CostCenter"],),
-                                    //             itemBuilder: (BuildContext context) {
-                                    //               return costCenterList.map((value) {
-                                    //                 value as Map;
-                                    //                 return CustomPopupMenuItem(
-                                    //                     value: value,
-                                    //                     text: "${value["costCenter"]} - ${value["costCenterName"]}",
-                                    //                     child: Container()
-                                    //                 );
-                                    //               }).toList();
-                                    //             },
-                                    //             onSelected: (value) {
-                                    //               setState(() {
-                                    //                 tableOne[index]["CostCenter"] = value["costCenter"];
-                                    //                 costCenterNameList[index].text = value["costCenterName"];
-                                    //               });
-                                    //             },
-                                    //             onCanceled: () {
-                                    //
-                                    //             },
-                                    //             hintText: "",
-                                    //             childWidth: constraints.maxWidth,
-                                    //             child: Container(),
-                                    //           );
-                                    //         },
-                                    //       ),
-                                    //     )
-                                    // ),
                                     if(costCenterNameList[index].text != "" || costCenterNameList[index].text.isNotEmpty)
                                       SizedBox(
                                         width: 140,
@@ -2408,67 +2508,6 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                                       ),
                                   ],
                                 ),
-                                // SizedBox(
-                                //     width: 150,
-                                //     child: Padding(
-                                //       padding: const EdgeInsets.all(8.0),
-                                //       child: LayoutBuilder(
-                                //         builder: (BuildContext context,
-                                //             BoxConstraints constraints) {
-                                //           final profitSortCenterList = List<String>.from(profitCenterList)..sort();
-                                //           return CustomPopupMenuButton(
-                                //             elevation: 4,
-                                //             decoration: Utils
-                                //                 .customPopupDecoration(
-                                //               hintText: tableOne[index]["ProfitCenter"] ==
-                                //                   ""
-                                //                   ? "Select"
-                                //                   : tableOne[index]["ProfitCenter"],),
-                                //             itemBuilder: (BuildContext context) {
-                                //               return profitSortCenterList.map((value) {
-                                //                 return CustomPopupMenuItem(
-                                //                     value: value,
-                                //                     text: value,
-                                //                     child: Container()
-                                //                 );
-                                //               }).toList();
-                                //             },
-                                //             onSelected: (value) {
-                                //               setState(() {
-                                //                 tableOne[index]["ProfitCenter"] =
-                                //                     value;
-                                //               });
-                                //             },
-                                //             onCanceled: () {
-                                //
-                                //             },
-                                //             hintText: "",
-                                //             childWidth: constraints
-                                //                 .maxWidth,
-                                //             child: Container(),
-                                //           );
-                                //         },
-                                //       ),
-                                //     )
-                                // ),
-                                // SizedBox(
-                                //     width: 250,
-                                //     child: Padding(
-                                //       padding: const EdgeInsets.all(8.0),
-                                //       child: TextFormField(
-                                //         style: const TextStyle(
-                                //             fontSize: 14),
-                                //         controller: assignmentController,
-                                //         decoration: Utils
-                                //             .customerFieldDecoration(
-                                //             hintText: 'Enter Assignment',
-                                //             controller: assignmentController),
-                                //         onChanged: (value) {
-                                //           tableOne[index]["assignment"] = value;
-                                //         },
-                                //       ),
-                                //     )
-                                // ),
                                 Padding(
                                   padding: const EdgeInsets.only(left: 20),
                                   child: SizedBox(
@@ -2516,6 +2555,9 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                                                       "CostCenter": "",
                                                       "ProfitCenter": "",
                                                       "assignment": "",
+                                                      "BusinessPlace":"",
+                                                      "plant":"",
+
                                                     });
                                                   });
                                                 }
@@ -2991,7 +3033,7 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                 ],
                 if(typeDropdownValue !=  "Cash Receipt" && typeDropdownValue !=  "Customer Receipt")...[
                   SizedBox(
-                    width: 1100,
+                    width: 1400,
                     child: ListView.builder(
                       shrinkWrap: true,
                       itemCount: tableOne.length,
@@ -3006,6 +3048,12 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                         TextEditingController referenceController = TextEditingController();
                         TextEditingController assignmentController = TextEditingController();
                         TextEditingController hsnController = TextEditingController();
+                        TextEditingController businessPlaceController = TextEditingController();
+                        TextEditingController plantController = TextEditingController();
+
+                        // businessPlaceController.text=businessCont.text;
+                        // plantController.text=plantCont.text;
+
                         try{
                           hsnController.text=tableOne[index]["GLAccount"];
                           hsnController.text=tableOne[index]["CostCenter"];
@@ -3026,6 +3074,12 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                         assignmentController.text =
                             (tableOne[index]["assignment"] ?? "")
                                 .toString();
+                        businessPlaceController.text = (tableOne[index]["BusinessPlace"] ?? "").toString();
+                        plantController.text = (tableOne[index]["plant"] ?? "").toString();
+                        tableOne[index]["BusinessPlace"] =businessCont.text;
+
+                        plantController.text = (tableOne[index]["plant"] ?? "").toString();
+                        tableOne[index]["plant"] =plantCont.text;
 
                         amountController.selection =
                             TextSelection.fromPosition(TextPosition(
@@ -3039,6 +3093,14 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                         assignmentController.selection =
                             TextSelection.fromPosition(TextPosition(
                                 offset: assignmentController.text
+                                    .length));
+                        businessPlaceController.selection =
+                            TextSelection.fromPosition(TextPosition(
+                                offset: businessPlaceController.text
+                                    .length));
+                        plantController.selection =
+                            TextSelection.fromPosition(TextPosition(
+                                offset: plantController.text
                                     .length));
                         return Container(
                           color: Colors.grey[50],
@@ -3102,159 +3164,8 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                                     ),
                                   ),
                                 ),
-                                ///GL OLD.
-                                // SizedBox(
-                                //     width: 150,
-                                //     child: Padding(
-                                //       padding: const EdgeInsets.all(8.0),
-                                //       child: CustomTextFieldSearch(
-                                //         showAdd: false,
-                                //         decoration: Utils.customerFieldDecoration(hintText: 'Search Gl', controller: hsnController),
-                                //         controller: hsnController,
-                                //         future: (){
-                                //           return getGLCodes();
-                                //         },
-                                //         getSelectedValue: (SearchGL v){
-                                //
-                                //           tableOne[index]["GLAccount"]= v.label;
-                                //
-                                //         },
-                                //
-                                //       ),
-                                //     )
-                                // ),
-
-                                // Column(
-                                //   children: [
-                                //     // SizedBox(
-                                //     //     width: 200,
-                                //     //     child: Padding(
-                                //     //       padding: const EdgeInsets.all(8.0),
-                                //     //       child: LayoutBuilder(
-                                //     //         builder: (BuildContext context,
-                                //     //             BoxConstraints constraints) {
-                                //     //           return CustomPopupMenuButton(
-                                //     //             textController: TextEditingController(text: tableOne[index]["GLAccount"]??""),
-                                //     //             elevation: 4,
-                                //     //             decoration: Utils.customPopupDecoration(hintText: "Select Gl",),
-                                //     //             itemBuilder: (
-                                //     //                 BuildContext context) {
-                                //     //               return glAccList.map((value) {
-                                //     //                 value as Map;
-                                //     //                 return CustomPopupMenuItem(
-                                //     //                     value: value['GLAccount'],
-                                //     //                     text: value['GLAccount'],
-                                //     //                     child: Container()
-                                //     //                 );
-                                //     //               }).toList();
-                                //     //             },
-                                //     //             onSelected: (value) {
-                                //     //               setState(() {
-                                //     //                 tableOne[index]["GLAccount"] = value.toString();
-                                //     //                 // glNameList[index] = value['GLAccountName'].toSting();
-                                //     //                 print('----------------------');
-                                //     //                 print(glNameList[index]);
-                                //     //               });
-                                //     //             },
-                                //     //             onCanceled: () {
-                                //     //
-                                //     //             },
-                                //     //             hintText: "",
-                                //     //             childWidth: constraints.maxWidth,
-                                //     //             child: Container(),
-                                //     //           );
-                                //     //         },
-                                //     //       ),
-                                //     //     )
-                                //     // ),
-                                //
-                                //     SizedBox(
-                                //       width: 200,
-                                //       child: Padding(
-                                //         padding: const EdgeInsets.all(8.0),
-                                //         child: LayoutBuilder(
-                                //           builder: (BuildContext context, BoxConstraints constraints) {
-                                //             return CustomPopupMenuButton(
-                                //               textController: TextEditingController(
-                                //                   text: tableOne[index]["GLAccount"] ?? ""),
-                                //               elevation: 4,
-                                //               decoration: Utils.customPopupDecoration(hintText: "Select Gl"),
-                                //               itemBuilder: (BuildContext context) {
-                                //                 return glAccList.map((value) {
-                                //                   value as Map;
-                                //                   return CustomPopupMenuItem(
-                                //                     value: value, // Pass the whole map as the value
-                                //                     text: value['GLAccount'],
-                                //                     child: Container(),
-                                //                   );
-                                //                 }).toList();
-                                //               },
-                                //               onSelected: (value) {
-                                //                 setState(() {
-                                //                   // Extract values from the selected map
-                                //                   tableOne[index]["GLAccount"] = value['GLAccount'].toString();
-                                //                   glNameList[index] = value['GLAccountName'].toString();
-                                //                   print('Selected GLAccountName: ${glNameList[index]}');
-                                //                 });
-                                //               },
-                                //               onCanceled: () {},
-                                //               hintText: "",
-                                //               childWidth: constraints.maxWidth,
-                                //               child: Container(),
-                                //             );
-                                //           },
-                                //         ),
-                                //       ),
-                                //     ),
-                                //     const SizedBox(height:5),
-                                //
-                                //     // if(glNameList[index] != "" && glNameList[index] != )
-                                //     //   Text('${glNameList[index] ?? ""}')
-                                //   ],
-                                // ),
-
                                 Column(crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    ///Old Dropdown
-                                    // SizedBox(
-                                    //   width: 200,
-                                    //   child: Padding(
-                                    //     padding: const EdgeInsets.all(8.0),
-                                    //     child: LayoutBuilder(
-                                    //       builder: (BuildContext context, BoxConstraints constraints) {
-                                    //         return CustomPopupMenuButton(
-                                    //           textController: TextEditingController(
-                                    //               text: tableOne[index]["GLAccount"] ?? ""),
-                                    //           elevation: 4,
-                                    //           decoration:
-                                    //           Utils.customPopupDecoration(hintText: "Select GL"),
-                                    //           itemBuilder: (BuildContext context) {
-                                    //             return glAccList.map((value) {
-                                    //               value as Map;
-                                    //               return CustomPopupMenuItem(
-                                    //                 value: value, // Pass the whole map as the value
-                                    //                 text: value['GLAccount']!,
-                                    //                 child: Container(),
-                                    //               );
-                                    //             }).toList();
-                                    //           },
-                                    //           onSelected: (value) {
-                                    //             setState(() {
-                                    //               tableOne[index]["GLAccount"] = value['GLAccount'].toString();
-                                    //               glNameList[index].text = value['GLAccountName'].toString();
-                                    //             });
-                                    //           },
-                                    //           onCanceled: () {},
-                                    //           hintText: "",
-                                    //           childWidth: constraints.maxWidth,
-                                    //           child: Container(),
-                                    //         );
-                                    //       },
-                                    //     ),
-                                    //   ),
-                                    // ),
-
-                                    ///Both
                                     SizedBox(
                                       width: 200,
                                       child: Padding(
@@ -3270,19 +3181,16 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                                               context: context,
                                               builder: (context) => _showDialogGL(),
                                             ).then((value) async {
-                                              print('-------Test--------');
-                                              print(value);
+
                                               if (value != null && value is Map) {
                                                 setState(() {
                                                   tableOne[index]["GLAccount"] = value['GLAccount'].toString();
                                                   glNameList[index].text = value['GLAccountName'].toString();
-                                                  print('-------------------gTesting -gg-jh------');
-                                                  print(value['CostCenter'].toString());
+
 
                                                   tableOne[index]["CostCenter"] = value['CostCenter'].toString();
                                                   costCenterNameList[index].text = value['CostCenterName'].toString();
-                                                  print("-------------$costCenterNameList");
-                                                  print(value['CostCenter'].toString());
+
                                                   if (typeDropdownValue != "--Select--") {
                                                     triggerBalanceApis();
                                                   }
@@ -3302,64 +3210,6 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                                       ),
                                   ],
                                 ),
-                                ///Commented (House Bank, Account ID)
-                                // SizedBox(
-                                //       width: 250,
-                                //       child: Padding(
-                                //         padding: const EdgeInsets.all(8.0),
-                                //         child: LayoutBuilder(
-                                //           builder: (BuildContext context,
-                                //               BoxConstraints constraints) {
-                                //             return CustomPopupMenuButton(
-                                //               elevation: 4,
-                                //               decoration: Utils.customPopupDecoration(hintText: tableOne[index]["houseBank"] == "" ? "Select" : tableOne[index]["houseBank"],),
-                                //               itemBuilder: (
-                                //                   BuildContext context) {
-                                //                 return houseBankList.map((value) {
-                                //
-                                //                   return CustomPopupMenuItem(
-                                //                       value: value,
-                                //                       text: "${value['HouseBank']}- ${value['BankAccountDescription']}",
-                                //                       child: Container()
-                                //                   );
-                                //                 }).toList();
-                                //               },
-                                //               onSelected: (value) {
-                                //                 value as Map;
-                                //                 setState(() {
-                                //                   tableOne[index]["houseBank"] = value['BankAccountDescription'];
-                                //                   tableOne[index]["accountId"] = value['HouseBank'];
-                                //
-                                //                 });
-                                //               },
-                                //               onCanceled: () {
-                                //
-                                //               },
-                                //               hintText: "",
-                                //               childWidth: constraints
-                                //                   .maxWidth,
-                                //               child: Container(),
-                                //             );
-                                //           },
-                                //         ),
-                                //       )
-                                //   ),
-                                // SizedBox(
-                                //       width: 150,
-                                //       child: Padding(
-                                //         padding: const EdgeInsets.all(8.0),
-                                //         child: TextFormField(readOnly:  true,
-                                //           style: const TextStyle(
-                                //               fontSize: 14),
-                                //           controller: TextEditingController(text: tableOne[index]["accountId"] ),
-                                //           decoration: Utils
-                                //               .customerFieldDecoration(hintText: 'Accounted ID', controller: textController),
-                                //           onChanged: (value) {
-                                //             tableOne[index]["accountIdController"] = value;
-                                //           },
-                                //         ),
-                                //       )
-                                //   ),
                                 SizedBox(
                                     width: 250,
                                     child: Padding(
@@ -3378,8 +3228,6 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                                       ),
                                     )
                                 ),
-                                ///Reference.
-
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -3399,43 +3247,6 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                                 ),
                                 Column(
                                   children: [
-                                    // SizedBox(
-                                    //     width: 150,
-                                    //     child: Padding(
-                                    //       padding: const EdgeInsets.all(8.0),
-                                    //
-                                    //           // Sort the costCenterList in ascending order
-                                    //           // final sortedCostCenterList = List<String>.from(costCenterList)..sort();
-                                    //
-                                    //
-                                    //             decoration: Utils.customPopupDecoration(
-                                    //               hintText: tableOne[index]["CostCenter"] == "" ? "Select" : tableOne[index]["CostCenter"],),
-                                    //             itemBuilder: (BuildContext context) {
-                                    //               return costCenterList.map((value) {
-                                    //                 value as Map;
-                                    //                 return CustomPopupMenuItem(
-                                    //                     value: value,
-                                    //                     text: "${value["costCenter"]} - ${value["costCenterName"]}",
-                                    //                     child: Container()
-                                    //                 );
-                                    //               }).toList();
-                                    //             },
-                                    //             onSelected: (value) {
-                                    //               setState(() {
-                                    //                 tableOne[index]["CostCenter"] = value["costCenter"];
-                                    //                 costCenterNameList[index].text = value["costCenterName"];
-                                    //               });
-                                    //             },
-                                    //             onCanceled: () {
-                                    //
-                                    //             },
-                                    //
-                                    //             child: Container(),
-                                    //
-                                    //
-                                    //
-                                    //     )
-                                    // ),
                                     SizedBox(
                                       width: 200,
                                       child: Padding(
@@ -3448,13 +3259,8 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                                             controller: TextEditingController(text: tableOne[index]["CostCenter"] ?? ""),
                                           ),
                                           onTap: () {
-                                            // showDialog(
-                                            //   context: context,
-                                            //   builder: (context) => _showDialogGL(),
-                                            // ).then
                                               ((value) async {
-                                              print('-------Test--------');
-                                              print(value);
+
                                               if (value != null && value is Map) {
                                                 setState(() {
                                                   tableOne[index]["CostCenter"] = value['CostCenter'].toString();
@@ -3480,69 +3286,131 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                                       ),
                                   ],
                                 ),
-                                // SizedBox(
-                                //     width: 150,
-                                //     child: Padding(
-                                //       padding: const EdgeInsets.all(8.0),
-                                //       child: LayoutBuilder(
-                                //         builder: (BuildContext context,
-                                //             BoxConstraints constraints) {
-                                //           final profitSortCenterList = List<String>.from(profitCenterList)..sort();
-                                //           return CustomPopupMenuButton(
-                                //             elevation: 4,
-                                //             decoration: Utils
-                                //                 .customPopupDecoration(
-                                //               hintText: tableOne[index]["ProfitCenter"] ==
-                                //                   ""
-                                //                   ? "Select"
-                                //                   : tableOne[index]["ProfitCenter"],),
-                                //             itemBuilder: (
-                                //                 BuildContext context) {
-                                //               return profitSortCenterList.map((
-                                //                   value) {
-                                //                 return CustomPopupMenuItem(
-                                //                     value: value,
-                                //                     text: value,
-                                //                     child: Container()
-                                //                 );
-                                //               }).toList();
-                                //             },
-                                //             onSelected: (value) {
-                                //               setState(() {
-                                //                 tableOne[index]["ProfitCenter"] =
-                                //                     value;
-                                //               });
-                                //             },
-                                //             onCanceled: () {
-                                //
-                                //             },
-                                //             hintText: "",
-                                //             childWidth: constraints
-                                //                 .maxWidth,
-                                //             child: Container(),
-                                //           );
-                                //         },
-                                //       ),
-                                //     )
-                                // ),
-                                // SizedBox(
-                                //     width: 250,
-                                //     child: Padding(
-                                //       padding: const EdgeInsets.all(8.0),
-                                //       child: TextFormField(
-                                //         style: const TextStyle(
-                                //             fontSize: 14),
-                                //         controller: assignmentController,
-                                //         decoration: Utils
-                                //             .customerFieldDecoration(
-                                //             hintText: 'Enter Assignment',
-                                //             controller: assignmentController),
-                                //         onChanged: (value) {
-                                //           tableOne[index]["assignment"] = value;
-                                //         },
-                                //       ),
-                                //     )
-                                // ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const SizedBox(height: 8),
+                                    InkWell(
+                                      onTap: () async {
+                                        Map<String, String>? selected = await showDialog(
+                                          context: context,
+                                          builder: (context) => AlertDialog(
+                                            title: const Text('Select Business'),
+                                            content: SizedBox(
+                                              width: 150,
+                                              height: 300,
+                                              child: ListView.builder(
+                                                itemCount: businessPlan.length,
+                                                itemBuilder: (context, index) {
+                                                  final business = businessPlan[index];
+                                                  return ListTile(
+                                                    title: Text('${business["code"]} - ${business["name"]}'),
+                                                    onTap: () {
+                                                      Navigator.pop(context, business);
+                                                    },
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(15),
+                                            ),
+                                          ),
+                                        );
+
+                                        if (selected != null) {
+                                          setState(() {
+                                            businessCont.text = selected["code"] ?? "";
+                                            businessnmCont = selected["name"] ?? "";
+                                            tableOne[index]["BusinessPlace"] = businessCont.text;
+                                            tableOne[index]["BusinessPlaceName"] = businessnmCont;
+                                          });
+                                        }
+                                      },
+                                      child: Container(
+                                        height: 30,
+                                        width: 150,
+                                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                                        alignment: Alignment.centerLeft,
+                                        decoration: BoxDecoration(
+                                          border: Border.all(color: Colors.grey, width: 1),
+                                          borderRadius: BorderRadius.circular(5),
+                                        ),
+                                        child: Text(
+                                          businessCont.text.isEmpty ? "Select Business" : businessCont.text,
+                                          style: const TextStyle(fontSize: 12, color: Colors.black),
+                                        ),
+                                      ),
+                                    ),
+                                    if (businessnmCont.isNotEmpty) ...[
+                                      const SizedBox(height: 5),
+                                      Text(
+                                        businessnmCont,
+                                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                                const SizedBox(width: 10,),
+                                Column(
+                                  children: [
+                                    const SizedBox(height: 8),
+                                    InkWell(
+                                      onTap: () async {
+                                        String? selected = await showDialog(
+                                          context: context,
+                                          builder: (context) => AlertDialog(
+                                            title: const Text('Select Plant'),
+
+                                            content: SizedBox(
+                                              width: 150,
+                                              height: 300,
+                                              child: ListView.builder(
+                                                itemCount: plantList.length,
+                                                itemBuilder: (context, index) {
+                                                  return ListTile(
+                                                    title: Text(plantList[index]),
+                                                    onTap: () {
+                                                      Navigator.pop(context, plantList[index]);
+                                                    },
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(15),
+                                            ),
+                                          ),
+                                        );
+
+                                        if (selected != null) {
+                                          setState(() {
+                                            plantCont.text = selected;
+                                            tableOne[index]["plant"] = plantCont.text;
+                                            // plantCont.text = selected;
+                                          });
+                                        }
+                                      },
+                                      child: Container(
+                                        height: 30,
+                                        width: 150,
+                                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                                        alignment: Alignment.centerLeft,
+                                        decoration: BoxDecoration(
+                                          border: Border.all(
+                                            color: Colors.grey,
+                                            width: 1,
+                                          ),
+                                          borderRadius: BorderRadius.circular(5),
+                                        ),
+                                        child: Text(
+                                          plantCont.text.isEmpty ? "Select Plant" : plantCont.text,
+                                          style: const TextStyle(fontSize: 12, color: Colors.black),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                                 Padding(
                                   padding: const EdgeInsets.only(left: 20),
                                   child: SizedBox(
@@ -3590,7 +3458,11 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
                                                       "CostCenter": "",
                                                       "ProfitCenter": "",
                                                       "assignment": "",
+                                                      "BusinessPlace": "",
+                                                      "plant": ""
                                                     });
+
+
                                                   });
                                                 }
                                               },
@@ -3666,13 +3538,27 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
   void filterGlCode(String gl) {
     setState(() {
       displayGLList = glAccList.where((glAccount) {
-        return glAccount["Code"]?.contains(gl) ?? false;
+        return glAccount["GLAccount"]?.contains(gl) ?? false;
       }).toList();
     });
   }
   void filterGlName(String gl) {
     setState(() {
       displayGLList = glAccList.where((glAccount) {
+        return glAccount["GLAccountName"]?.toString().toLowerCase().contains(gl.toString().toLowerCase()) ?? false;
+      }).toList();
+    });
+  }
+  void filtercashlineGlCode(String gl) {
+    setState(() {
+      displaygllineList = initilaLineglList.where((glAccount) {
+        return glAccount["Code"]?.contains(gl) ?? false;
+      }).toList();
+    });
+  }
+  void filtercashlineGlName(String gl) {
+    setState(() {
+      displaygllineList = initilaLineglList.where((glAccount) {
         return glAccount["Name"]?.toString().toLowerCase().contains(gl.toString().toLowerCase()) ?? false;
       }).toList();
     });
@@ -3804,6 +3690,113 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
       ),
     );
   }
+  _showDialogGL2() {
+    return AlertDialog(
+      title: const Text("Select Cash GL"),
+      content: StatefulBuilder(
+          builder: (context, setState) {
+            return SizedBox(height: 500,
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: TextField(
+                            controller: searchglcodelineCont,
+                            decoration: const InputDecoration(
+                              labelText: 'Search By Cash GL Code',
+                            ),
+                            onChanged: (value) {
+                              // print('-------value-----');
+                              // print(value);
+                              setState(() {
+                                if(value.isEmpty || value.trim().isEmpty){
+                                  displaygllineList = initilaLineglList;
+                                }
+                                else{
+                                  filtercashlineGlCode(value);
+                                }
+                                if(searchGlNameCont.text != ""){
+                                  searchGlNameCont.text = "";
+                                }
+                              });
+
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 20,),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: TextField(
+                            controller: searchGlNameCont,
+                            decoration: const InputDecoration(
+                              labelText: 'Search By Cash Journal Name',
+                            ),
+                            onChanged: (value) {
+                              // setState(() {
+                              //   if(value.isEmpty || value.trim().isEmpty){
+                              //     displayGLList = glAccList;
+                              //   }
+                              //   else{
+                              //     filterGlName(value);
+                              //   }
+                              //   if(searchGlCodeCont.text != ""){
+                              //     searchGlCodeCont.text = "";
+                              //   }
+                              // });
+                              setState(() {
+                                if(value.isEmpty || value.trim().isEmpty){
+                                  displaygllineList = initilaLineglList;
+                                }
+                                else{
+                                  filtercashlineGlName(value);
+                                }
+                                if(searchGlCodeCont.text != ""){
+                                  searchGlCodeCont.text = "";
+                                }
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(
+                    width: 600,
+                    height: 350,
+                    child:displaygllineList.isEmpty
+                        ?  Center(
+                      child: Text(
+                        ((typeDropdownValue == "--Select--") || (typeDropdownValue == "")) ? "Please Select Type Of Transaction.": "No Matching Records Found.",
+                        style:const TextStyle(color: Colors.red, fontSize: 16),
+                      ),
+                    ) :  ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: displaygllineList.length,
+                      itemBuilder: (context, index) {
+                        return InkWell(
+                          onTap: (){
+                            Navigator.pop(context,displaygllineList[index]);
+                          },
+                          child: ListTile(
+                            title:  Text(displaygllineList[index]['Code']??""),
+                            subtitle: Text(displaygllineList[index]['Name']??""),
+                          ),
+                        );
+                      },
+                    ),
+                  )
+                ],
+              ),
+            );
+          }
+      ),
+    );
+  }
   ///Search GL Show Dialog.
   _showDialogGL() {
     return AlertDialog(
@@ -3902,119 +3895,7 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
       ),
     );
   }
-  ///TaxCode.
-  _showDialogTaxCodes() {
-    return AlertDialog(
-      title: const Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text("Select TaxCode"),
-          // if(taxCode != "")
-          //   MaterialButton(
-          //       color: Colors.blue,
-          //       onPressed: (){
-          //         setState(() {
-          //           taxCode = "Clear";
-          //           Navigator.pop(context,taxCode);
-          //         });
-          //       },
-          //       child:const Text("Clear TaxCode",style: TextStyle(color: Colors.white),))
-        ],
-      ),
-      content: StatefulBuilder(
-          builder: (context, setState) {
-            return SizedBox(height: 500,
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: TextField(
-                            controller: searchTaxCodeCont,
-                            decoration: const InputDecoration(
-                              labelText: 'Search TaxCode',
-                            ),
-                            onChanged: (value) {
-                              // print('-------value-----');
-                              // print(value);
-                              setState(() {
-                              if(value.isEmpty || value.trim().isEmpty){
-                                displayTaxCodesList = taxCodesDELine;
-                              }
-                              else{
-                                filterTaxCodes(value);
-                              }
-                              if(searchTaxNameCont.text != ""){
-                                searchTaxNameCont.text = "";
-                              }
-                              });
-                            },
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 20,),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: TextField(
-                            controller: searchTaxNameCont,
-                            decoration: const InputDecoration(
-                              labelText: 'Search TaxName',
-                            ),
-                            onChanged: (value) {
-                              // print('-------value-----');
-                              // print(value);
-                              setState(() {
-                                if(value.isEmpty || value.trim().isEmpty){
-                                  displayTaxCodesList = taxCodesDELine;
-                                }
-                                else{
-                                  filterTaxNames(value);
-                                }
-                                if(searchTaxCodeCont.text != ""){
-                                  searchTaxCodeCont.text = "";
-                                }
-                              });
-                            },
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(
-                    width: 600,
-                    height: 350,
-                    child:displayTaxCodesList.isEmpty
-                        ? const Center(
-                      child: Text(
-                        "No Matching Records Found.",
-                        style: TextStyle(color: Colors.red, fontSize: 16),
-                      ),
-                    ) :  ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: displayTaxCodesList.length,
-                      itemBuilder: (context, index) {
-                        return InkWell(
-                          onTap: (){
-                            Navigator.pop(context,displayTaxCodesList[index]);
-                          },
-                          child: ListTile(
-                            title:  Text(displayTaxCodesList[index]['TAXCODE']??""),
-                            subtitle: Text(displayTaxCodesList[index]['TAXCODENAME']??""),
-                          ),
-                        );
-                      },
-                    ),
-                  )
-                ],
-              ),
-            );
-          }
-      ),
-    );
-  }
+
   ///Customer
   _showDialogCustomer() {
     return AlertDialog(
@@ -4141,7 +4022,7 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
               matchFound = true;
               final String amountString = item["AMOUNT"] ?? "0";
               openingCurrency = item["CompanyCodeCurrency"];
-              print(openingCurrency);
+
 
               openingTotal = double.tryParse(amountString) ?? 0.0;
               // Parse the string to a double
@@ -4222,6 +4103,8 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
         "CostCenter": "",
         "ProfitCenter": "",
         "assignment": "",
+        "BusinessPlace":"",
+        "plant":"",
       },
     ];
     customerTable = [
@@ -4242,6 +4125,8 @@ class _PettyCashEntryState extends State<PettyCashEntry> {
     ];
     cashJournalName = "";
     glNameList = [];
+    // plantList=[];
+    // businessPlan=[];
     taxCodeNamesList = [];
     searchTaxCodeCont.text = '';
     searchTaxNameCont.text = "";
