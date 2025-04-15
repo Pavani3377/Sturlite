@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/src/widgets/framework.dart';
 import 'package:http/http.dart' as http;
 import 'package:sturlite/utils/static_data.dart';
 import 'package:xml/xml.dart';
@@ -149,7 +148,7 @@ Future getProfitCenter() async{
 //New Changes
 Future getCashJournal(String typeDropdownValue) async{
   String url = "${StaticData.apiURL}/YY1_ACCOUNTING_JOURNAL_PET_CDS/YY1_ACCOUNTING_JOURNAL_PET?TypeOfTransaction=$typeDropdownValue";
-  print('full api-----$url');
+  // print('full api-----$url');
   try{
     final response = await http.get(
         Uri.parse(url),
@@ -171,7 +170,123 @@ Future getCashJournal(String typeDropdownValue) async{
 }
 Future getGlAccount(String typeDropdownValue) async{
   String url = "${StaticData.apiURL}/YY1_PETTY_HEADGLACCOUNTS_CDS/YY1_PETTY_HEADGLACCOUNTS?TypeOfTransaction=$typeDropdownValue";
-  print('second api---------------$url');
+  // print('second api---------------$url');
+  try{
+    final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'authorization': StaticData.basicAuth
+        }
+    );
+    if(response.statusCode == 200){
+      return json.decode(response.body)['d']['results'];
+    } else{
+      log("Response Status Code in Cash Journal API: ${response.statusCode}");
+      return null;
+    }
+  }catch(e){
+    log("Error in Cash Journal header API: $e");
+    return null;
+  }
+
+}
+
+Future getGlAccount2(String typeDropdownValue,List<String> gl) async{
+  if (gl.isEmpty) {
+    log("GL list is empty.");
+    return null;
+  }
+
+  // Create OR conditions like: Journal_Accounts eq '15171128' or Journal_Accounts eq '15171116'
+  // String glConditions = gl.map((gl) => "Journal_Accounts eq'$gl'").join("or");
+  String glConditions = gl
+      .map((gl) => "Journal_Accounts eq '${gl.trim()}'")
+      .join(" or ");
+  glConditions += " or Journal_Accounts eq '60027007'";
+
+  String filter = "TypeOfTransaction_Text eq 'Cash Payment' and ($glConditions)";
+  String encodedFilter = Uri.encodeComponent(filter);
+  // String url = "${StaticData.apiURL}/GLACCTS/YY1_ACCOUNTING_JOURNAL_PET_CDS/YY1_ACCOUNTING_JOURNAL_PET?filter=TypeOfTransaction_Text eq 'Cash Payment' and (Journal_Accounts eq '$gl' or Journal_Accounts eq '$gl')";
+  String url = "${StaticData.apiURL}/GLACCTS/YY1_ACCOUNTING_JOURNAL_PET_CDS/YY1_ACCOUNTING_JOURNAL_PET?filter=$encodedFilter ";
+  // String url = "${StaticData.apiURL}/GLACCTS/YY1_ACCOUNTING_JOURNAL_PET_CDS/YY1_ACCOUNTING_JOURNAL_PET?filter=TypeOfTransaction_Text%20eq%20'Cash%20Payment'%20and%20(Journal_Accounts eq '$gl' or Journal_Accounts eq '$gl' or Journal_Accounts eq '60027007')";
+
+  // print('second api-gl-12345-------------$url');
+  try{
+    final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'authorization': StaticData.basicAuth
+        }
+    );
+    if(response.statusCode == 200){
+      return json.decode(response.body)['d']['results'];
+    } else{
+      log("Response Status Code in Cash Journal API: ${response.statusCode}");
+      return null;
+    }
+  }catch(e){
+    log("Error in Cash Journal header API: $e");
+    return null;
+  }
+
+}
+
+Future gethappygh(String typeDropdownValue,List<String> gl) async{
+  if (gl.isEmpty) {
+    log("GL list is empty.");
+    return null;
+  }
+
+  // Create OR conditions like: Journal_Accounts eq '15171128' or Journal_Accounts eq '15171116'
+  // String glConditions = gl.map((gl) => "Journal_Accounts eq'$gl'").join("or");
+  String glConditions = gl
+      .map((gl) => "Journal_Accounts eq '${gl.trim()}'")
+      .join(" or ");
+
+  String filter = "TypeOfTransaction_Text eq '$typeDropdownValue' and ($glConditions)";
+  String encodedFilter = Uri.encodeComponent(filter);
+  // String url = "${StaticData.apiURL}/GLACCTS/YY1_ACCOUNTING_JOURNAL_PET_CDS/YY1_ACCOUNTING_JOURNAL_PET?filter=TypeOfTransaction_Text eq '$typeDropdownValue' and (Journal_Accounts eq '$gl' or Journal_Accounts eq '$gl')";
+  String url = "${StaticData.apiURL}/GLACCTS/YY1_ACCOUNTING_JOURNAL_PET_CDS/YY1_ACCOUNTING_JOURNAL_PET?filter=$encodedFilter";
+
+  // print('second api-gl--------------$url');
+  try{
+    final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'authorization': StaticData.basicAuth
+        }
+    );
+    if(response.statusCode == 200){
+      return json.decode(response.body)['d']['results'];
+    } else{
+      log("Response Status Code in Cash Journal API: ${response.statusCode}");
+      return null;
+    }
+  }catch(e){
+    log("Error in Cash Journal header API: $e");
+    return null;
+  }
+
+}
+
+Future getGlAccount1(String typeDropdownValue,List<String> gl) async{
+  if (gl.isEmpty) {
+    log("GL list is empty.");
+    return null;
+  }
+
+  // Create OR conditions like: Journal_Accounts eq '15171128' or Journal_Accounts eq '15171116'
+  // String glConditions = gl.map((gl) => "Journal_Accounts eq'$gl'").join("or");
+  String glConditions = gl
+      .map((gl) => "Journal_Accounts eq '${gl.trim()}'")
+      .join(" or ");
+
+  String filter = "TypeOfTransaction_Text eq '$typeDropdownValue' and ($glConditions)";
+  String encodedFilter = Uri.encodeComponent(filter);
+  // String url = "${StaticData.apiURL}/GLACCTS/YY1_ACCOUNTING_JOURNAL_PET_CDS/YY1_ACCOUNTING_JOURNAL_PET?filter=TypeOfTransaction_Text eq '$typeDropdownValue' and (Journal_Accounts eq '$gl' or Journal_Accounts eq '$gl')";
+  String url = "${StaticData.apiURL}/GLACCTS/YY1_ACCOUNTING_JOURNAL_PET_CDS/YY1_ACCOUNTING_JOURNAL_PET?filter=$encodedFilter";
+
+  // print('second api-gl--------------$url');
   try{
     final response = await http.get(
         Uri.parse(url),
@@ -193,7 +308,7 @@ Future getGlAccount(String typeDropdownValue) async{
 }
 Future getPettyCostCenter(String typeDropdownValue) async{
   String url = "${StaticData.apiURL}/YY1_PETTY_HEADGLACCOUNTS_CDS/YY1_PETTY_HEADGLACCOUNTS?TypeOfTransaction=$typeDropdownValue";
-  print('second api---------------$url');
+  // print('second api---------------$url');
   try{
     final response = await http.get(
         Uri.parse(url),
@@ -256,7 +371,7 @@ Future<bool> postData(xml, BuildContext context, bool mounted)async{
         // Extract the text value
         final String accountingDocumentValue = accountingDocument.text;
 
-        print('AccountingDocument value: $accountingDocumentValue');
+        // print('AccountingDocument value: $accountingDocumentValue');
 
         print("Success: Document posted successfully!");
 
