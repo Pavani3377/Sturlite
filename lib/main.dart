@@ -24,7 +24,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: window.sessionStorage["login"] == "success" ? const HomeScreen() :const LoginScreen(),
+      home: window.sessionStorage["login"] == "success" ? const HomeScreen(plantValue: '', userName: '',) :const LoginScreen(),
     );
   }
 }
