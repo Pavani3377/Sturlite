@@ -1,13 +1,17 @@
 import 'dart:convert';
 import 'dart:developer';
-import 'dart:html';
-
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sturlite/home_screen.dart';
-import 'package:sturlite/petty_cash_entry/petty_cash_entry.dart';
+import 'package:sturlite/utils/m_colors.dart';
 import 'package:sturlite/utils/static_data.dart';
 
 import 'package:http/http.dart' as http;
+
+String responseData="";
+String formattedUuid="";
+String guID="guid";
+
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -17,13 +21,26 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  bool _isPasswordVisible = false;
+
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-  // final TextEditingController passwordController = TextEditingController();
+  final TextEditingController userName = TextEditingController();
+  final TextEditingController password = TextEditingController();
+  final TextEditingController plantName = TextEditingController();
+  final TextEditingController newPasswordController=TextEditingController();
+  bool userBool=false;
+  bool showError = false;
+  bool passWordColor = false;
+  final FocusNode passwordFocusNode = FocusNode();
+  final FocusNode plantFocusNode = FocusNode();
+  bool showHidePassword=true;
+  void passwordHideAndViewFunc(){
+    setState(() {
+      showHidePassword = !showHidePassword;
+    });
+  }
   @override
   Widget build(BuildContext context) {
-
 
     return Scaffold(
       body: Container(
@@ -65,12 +82,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       height: 100,
                       width: 350,
                       decoration: const BoxDecoration(
-                      //  color:Colors.black,
+                        //  color:Colors.black,
                         gradient: LinearGradient(
                           colors: [
                             Color(0xffB2B5C4),
 
-                           Colors.black,
+                            Colors.black,
                             Color(0xffB2B5C4),
 
                           ],
@@ -93,11 +110,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         fontWeight: FontWeight.bold,
                         foreground: Paint()..shader = const LinearGradient(
                           colors: [
-                            // Color(0xFFA54AE2), // Light blue
-                            // Color(0xFF145DA0),
-                            // Color(0xFFFF8C42), // Vibrant Orange
-                             Color(0xd7f69aa5), // Darker blue
-                             Color(0xd7000000), // Darker blue
+                            Color(0xd7f69aa5), // Darker blue
+                            Color(0xd7000000), // Darker blue
                           ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
@@ -121,101 +135,114 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 30),
-                    // Email Input Field
-                    TextField(
-                      controller: emailController,
-                      decoration: InputDecoration(
-                        labelText: 'User Name',
-                        prefixIcon: const Icon(Icons.email, color: Colors.blueAccent),
-                        filled: true,
-                        fillColor: Colors.grey[100],
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                      keyboardType: TextInputType.emailAddress,
-                    ),
-                    const SizedBox(height: 20),
-                    // Password Input Field
-                    TextField(
-                      controller: passwordController,
-                      obscureText: !_isPasswordVisible, // Toggles password visibility
-                      decoration: InputDecoration(
-                        labelText: 'Password',
-                        prefixIcon: const Icon(Icons.lock, color: Colors.blueAccent),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-                            color: Colors.blueAccent,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _isPasswordVisible = !_isPasswordVisible;
-                            });
-                          },
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey[100],
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 15),
-                    // Forgot Password
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: () {
-                          print('Forgot Password Clicked');
-                        },
-                        child: Text(
-                          'Forgot Password?',
-                          style: TextStyle(color: Colors.blueAccent.shade700),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    // Login Button
                     SizedBox(
-                      width: double.infinity,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [
-                              Color(0xFF4A90E2), // Light blue
-                              Color(0xFF145DA0),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: ElevatedButton(
-                          onPressed: () {
-                            _handleLogin();
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent, // Transparent to let the gradient show
-                            shadowColor: Colors.transparent, // No shadow behind
-                            padding: const EdgeInsets.symmetric(vertical: 15),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                          ),
-                          child: const Text(
-                            'Log In',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
+                      height: 55,
+                      child: TextField(
+                        controller: userName,
+                        decoration: InputDecoration(
+                          labelText: 'User Name',
+                          prefixIcon: const Icon(Icons.email, color: Colors.blueAccent),
+                          filled: true,
+                          fillColor: Colors.grey[100],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            borderSide: BorderSide.none,
                           ),
                         ),
+                        keyboardType: TextInputType.emailAddress,
+                        style: const TextStyle(fontSize: 14),
+                        onEditingComplete: () {
+                          FocusScope.of(context).requestFocus(passwordFocusNode);
+                        },
                       ),
                     ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      height: 55,
+                      child: TextField(
+                        controller: password,
+                        obscureText: showHidePassword,
+                        enableSuggestions: false,
+                        autocorrect: false,
+                        decoration: InputDecoration(
+                          labelText: 'Password',
+                          prefixIcon: const Icon(Icons.lock, color: Colors.blueAccent),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              showHidePassword ? Icons.visibility_off : Icons.visibility,
+                              color: Colors.blueAccent,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                showHidePassword = !showHidePassword;
+                              });
+                            },
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey[100],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                        style: const TextStyle(fontSize: 14),
+                        onEditingComplete: () {
+                          postLogin(userName, password,plantName).then((value) {
+                            if (value != null) {
+                              Navigator.of(context).push(PageRouteBuilder(
+                                pageBuilder: (context, animation, secondaryAnimation) => const HomeScreen(
+                                  userName: 'value', plantValue: '',
+
+                                ),
+                              ));
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Login failed. Invalid username, password'),
+                                ),
+                              );
+                            }
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                     SizedBox(height: 35, width: double.infinity,
+                       child: Container(
+                      decoration:  BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [
+                            Color(0xFF4A90E2), // Light blue
+                            Color(0xFF145DA0), // Darker blue
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: TextButton(onPressed: () {
+                        postLogin(userName, password,plantName).then((value) {
+                          if(value != null){
+                            Navigator.of(context).push(
+                                PageRouteBuilder(
+                                  pageBuilder: (context, animation, secondaryAnimation) =>
+                                  const HomeScreen(plantValue: '', userName: '',),
+                                )
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Login failed. Invalid username, password.'),
+                              ),
+                            );
+                          }
+                        });
+                      },
+                          child: const Text("Log In",style:  TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16,),)),
+                    ),
+                    ),
+
+                    const SizedBox(height: 15),
                     const SizedBox(height: 20),
 
                   ],
@@ -227,66 +254,103 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
-  Future<void> _handleLogin() async {
-    final username = emailController.text.trim();
-    final pass = passwordController.text.trim();
-
-    if(username.isNotEmpty && pass.isNotEmpty){
-      // log("Logging in with username: $username and password: $pass");
-      await checkLogin(username,pass);
-    }else{
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please Enter Valid User Id and Password")));
-      log("Username and Password are required");
-    }
-    // Navigator.pushAndRemoveUntil(context, PageRouteBuilder(pageBuilder: (context, animation, secondaryAnimation) => const HomeScreen(), settings: const RouteSettings(name: "/")), (route) => false,);
-  }
-
-  checkLogin(String username, String password) async {
-    Map tempJson ={
-      "username": username,
-      "password": password
-    };
-
-
-    final response = await http.post(Uri.parse("https://Sturliteapp-chipper-bear-vb.cfapps.in30.hana.ondemand.com/api/login"),
+  Future<SharedPreferences?> postLogin(TextEditingController userName, TextEditingController password, TextEditingController plant) async{
+    String url = "${StaticData.apiURL}/Gateentry/YY1_USERCRED_CDS/YY1_USERCRED?filter=UserName eq '${userName.text}' and Password eq '${password.text}'";
+    // print("post login url $url");
+    try{
+      final response = await http.get(
+        Uri.parse(url),
         headers: {
-          "Content-Type": "application/json",
+          'Authorization': StaticData.basicAuth,
         },
-        body: json.encode(tempJson)
-    );
-    if(response.statusCode ==200){
-      Map tempData = json.decode(response.body);
-      if(tempData.containsKey('status')){
-        if(tempData['status']=="error") {
-          if(mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please Enter Valid User Id and Password")));
+      );
+
+      if (response.statusCode == 200) {
+        Map responseData ={};
+        try{
+          responseData= jsonDecode(response.body);
+          if(responseData.containsKey("d") && responseData["d"]["results"].isNotEmpty){
+            String plantValue = responseData["d"]["results"][0]["Plant"];
+            String sapuid = responseData["d"]["results"][0]["SAP_UUID"];
+            String businessplace= responseData["d"]["results"][0]["BusinessPlace"];
+            String businessplacename= responseData["d"]["results"][0]["BusinessPlaceName"];
+            String cashgl=responseData["d"]["results"][0]["CashGL"];
+            String hapygl=responseData["d"]["results"][0]["HappayCardGL"];
+
+            SharedPreferences prefs = await SharedPreferences.getInstance();
+            prefs.setString('userName', userName.text);
+            prefs.setString('password', password.text);
+            prefs.setString('sapuid', sapuid);
+
+            prefs.setString('plant', plantValue);
+            prefs.setString('BusinessPl', businessplace);
+            prefs.setString('BusinessPlNM', businessplacename);
+            prefs.setString('cashgls', cashgl);
+            prefs.setString('happygl', hapygl);
+
+            return prefs;
+            // plantValue;
+            // return prefs;
+          } else {
+            print("Login failed: No user found");
+            return null;
           }
         }
-        else {
-          window.sessionStorage["login"] = "success";
-          window.sessionStorage["userType"] = tempData['role'];
-          if(username == "Inflow") {
-            window.sessionStorage["userType"] = "all";
-          }
-          if(mounted) {
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomeScreen()));
-            //Navigator.pushAndRemoveUntil(context, PageRouteBuilder(pageBuilder: (context, animation, secondaryAnimation) => const HomeScreen(), settings: const RouteSettings(name: "/")), (route) => false,);
-          }
+        catch(e){
+          log(response.body);
+          return null;
         }
       }
       else {
-        if(mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Something went wrong")));
-        }
-
+        print("Error: ${response.statusCode}");
+        return null;
       }
-    }
-    else {
-      if(mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Something went wrong")));
-      }
+    }catch(e){
+      print("Exception during login: $e");
+      return null;
     }
   }
+
+  decorationInputPassword(String hintString, bool val, bool passWordHind,  passwordHideAndView, ) {
+    return InputDecoration(
+        label: Text(
+          hintString,
+        ),
+        suffixIcon: IconButton(
+          icon: Icon(
+            passWordHind ? Icons.visibility : Icons.visibility_off,size: 20,
+          ),
+          onPressed: passwordHideAndView,
+        ),suffixIconColor: val?const Color(0xff00004d):Colors.grey,
+        // suffixIconColor:val?  const Color(0xff00004d):Colors.grey,
+        counterText: "",
+        contentPadding: const EdgeInsets.fromLTRB(12, 00, 0, 0),
+        hintText: hintString,labelStyle: const TextStyle(fontSize: 12,),
+
+        disabledBorder:  const OutlineInputBorder(borderSide:  BorderSide(color:  Colors.white)),
+        enabledBorder:const OutlineInputBorder(borderSide:  BorderSide(color: mTextFieldBorder)),
+        focusedBorder:  const OutlineInputBorder(borderSide:  BorderSide(color: Color(0xff00004d))),
+        border:   const OutlineInputBorder(borderSide:  BorderSide(color: Color(0xff00004d)))
+
+    );
+  }
+  decorationInput3(String hintString, bool val,) {
+    return  InputDecoration(
+
+        label: Text(
+          hintString,
+        ),
+        counterText: '',labelStyle: const TextStyle(fontSize: 12),
+        contentPadding:  const EdgeInsets.fromLTRB(12, 00, 0, 0),
+        hintText: hintString,
+        suffixIconColor: const Color(0xfff26442),
+        disabledBorder:  const OutlineInputBorder(borderSide:  BorderSide(color:  Colors.white)),
+        enabledBorder:const OutlineInputBorder(borderSide:  BorderSide(color: mTextFieldBorder)),
+        focusedBorder:  const OutlineInputBorder(borderSide:  BorderSide(color:Color(0xff00004d))),
+        border:   const OutlineInputBorder(borderSide:  BorderSide(color:Color(0xff00004d)))
+    );
+  }
+
 }
 
 
